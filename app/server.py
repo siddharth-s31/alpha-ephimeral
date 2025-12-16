@@ -13,7 +13,7 @@ def hello():
     html_content = f"""
     <div style="font-family: sans-serif; text-align: center; padding-top: 50px;">
         <h1 style="color: #2c3e50;">🚀 Ephemeral Environment is Live!</h1>
-        <p>This is a dynamic preview generated automatically.</p>
+        <p>This is a dynamic preview generated automatically this is updated to test.</p>
         <br>
         <div style="background: #ecf0f1; display: inline-block; padding: 20px; border-radius: 10px;">
             <p><strong>Container ID / Pod:</strong> {pod_name}</p>
