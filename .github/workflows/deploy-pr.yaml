@@ -1,0 +1,70 @@
+name: Deploy Ephemeral Env
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to push the new manifest
+      pull-requests: write # Needed to comment on PR
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set Environment Variables
+        run: |
+          echo "PR_ID=${{ github.event.number }}" >> $GITHUB_ENV
+          echo "SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      # 1. Build and Push Docker Image
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: ./app
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }}
+
+      # 2. The Twist: Generate the Manifest
+      - name: Generate Kubernetes Manifest
+        run: |
+          # Read template, replace placeholders, save to environments folder
+          sed -e "s/{{PR_ID}}/${{ env.PR_ID }}/g" \
+              -e "s/{{IMAGE_TAG}}/${{ env.SHA_SHORT }}/g" \
+              k3s/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
+
+      # 3. GitOps Push (Commit the new manifest back to repo)
+      - name: Push Manifest to Repo
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add environments/pr-${{ env.PR_ID }}.yaml
+          git commit -m "Deploy PR #${{ env.PR_ID }} environment"
+          git push
+
+      # 4. Comment the URL on the PR
+      - name: Comment PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prId = process.env.PR_ID;
+            // REPLACE THIS IP WITH YOUR MACHINE'S IP
+            const url = `http://pr-${prId}.172.17.5.38.nip.io`; 
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Ephemeral Environment Deployed!**\n\nAccess your preview here: [${url}](${url})\n\n_Note: It may take a minute for ArgoCD to sync._`
+            })
+        env:
+          PR_ID: ${{ env.PR_ID }}
