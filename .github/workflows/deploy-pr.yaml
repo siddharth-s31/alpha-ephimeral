@@ -35,34 +35,30 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }}
 
       # 2. The Twist: Generate the Manifest
-      - name: Generate Kubernetes Manifest
-        run: |
-          mkdir -p environments
-          # Read template, replace placeholders, save to environments folder
-          sed -e "s/{{PR_ID}}/${{ env.PR_ID }}/g" \
-              -e "s/{{IMAGE_TAG}}/${{ env.SHA_SHORT }}/g" \
-              k3s/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
-
-      # 3. GitOps Push (Commit the new manifest back to repo)
-      - name: Push Manifest to Repo
+     - name: Generate and Push Manifest
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           
-          # 1. Fetch the latest version of the branch from GitHub
-          git fetch origin ${{ github.head_ref }}
+          # 1. Fetch and Switch to MAIN first
+          git fetch origin main
+          git checkout main
+          git pull origin main
           
-          # 2. Switch to that branch and RESET to match the remote exactly
-          #    (Your generated 'environments/pr-x.yaml' file is safe because it is untracked)
-          git checkout ${{ github.head_ref }}
-          git reset --hard origin/${{ github.head_ref }}
+          # 2. NOW generate the manifest (while we are on the main branch)
+          # We must recreate the environments folder just in case
+          mkdir -p environments
           
-          # 3. Now add and commit the generated file
+          sed -e "s/{{PR_ID}}/${{ env.PR_ID }}/g" \
+              -e "s/{{IMAGE_TAG}}/${{ env.SHA_SHORT }}/g" \
+              k8s/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
+          
+          # 3. Add and Commit
           git add environments/pr-${{ env.PR_ID }}.yaml
           git commit -m "Deploy PR #${{ env.PR_ID }} environment [skip ci]"
           
-          # 4. Push safely
-          git push origin ${{ github.head_ref }}
+          # 4. Push to MAIN
+          git push origin main
 
       # 4. Comment the URL on the PR
       - name: Comment PR
