@@ -49,8 +49,8 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add environments/pr-${{ env.PR_ID }}.yaml
-          git commit -m "Deploy PR #${{ env.PR_ID }} environment"
-          git push
+          git commit -m "Deploy PR #${{ env.PR_ID }} environment [skip ci]"
+          git push origin HEAD:${{ github.head_ref }}
 
       # 4. Comment the URL on the PR
       - name: Comment PR
