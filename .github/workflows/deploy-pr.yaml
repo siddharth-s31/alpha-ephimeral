@@ -37,6 +37,7 @@ jobs:
       # 2. The Twist: Generate the Manifest
       - name: Generate Kubernetes Manifest
         run: |
+          mkdir -p environments
           # Read template, replace placeholders, save to environments folder
           sed -e "s/{{PR_ID}}/${{ env.PR_ID }}/g" \
               -e "s/{{IMAGE_TAG}}/${{ env.SHA_SHORT }}/g" \
