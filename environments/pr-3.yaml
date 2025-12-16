@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: siddharthdoc/demo-app:c141cf5
+        image: siddharthdoc/demo-app:a00c6e8
         ports:
         - containerPort: 5000
 ---
