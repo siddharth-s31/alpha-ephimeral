@@ -27,15 +27,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-     # 1. Install the "pack" CLI tool (Using a valid version)
       - name: Setup Pack
         uses: buildpacks/github-actions/setup-pack@v5.9.2
 
-      # 2. Run the build command (This detects your Python app automatically)
+      # 2. Run the build command
       - name: Build and Push with Pack
         run: |
           pack build ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }} \
-            --builder paketobuildpacks/builder:base \
+            --builder paketobuildpacks/builder-jammy-base \
             --publish
 
       # 2. The Twist: Generate the Manifest
