@@ -27,17 +27,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push with Buildpacks
-        uses: buildpacks/github-actions/pack@v5
-        with:
-          # The image name to publish
-          image: ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }}
-          
-          # The "Builder" image (This one contains logic for Python, Node, Go, etc.)
-          builder: paketobuildpacks/builder:base
-          
-          # Publish directly to the registry
-          publish: true
+      - name: Setup Pack
+        uses: buildpacks/github-actions/setup-pack@v5.9.7
+
+      # 2. Run the build command (This detects your Python app automatically)
+      - name: Build and Push with Pack
+        run: |
+          pack build ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }} \
+            --builder paketobuildpacks/builder:base \
+            --publish
 
       # 2. The Twist: Generate the Manifest
       - name: Generate and Push Manifest to Infra Repo
