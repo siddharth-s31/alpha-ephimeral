@@ -27,42 +27,49 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push
-        uses: docker/build-push-action@v4
+      - name: Build and Push with Buildpacks
+        uses: buildpacks/github-actions/pack@v5
         with:
-          context: ./app
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }}
+          # The image name to publish
+          image: ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }}
+          
+          # The "Builder" image (This one contains logic for Python, Node, Go, etc.)
+          builder: paketobuildpacks/builder:base
+          
+          # Publish directly to the registry
+          publish: true
 
       # 2. The Twist: Generate the Manifest
-      - name: Generate Kubernetes Manifest
+      - name: Generate and Push Manifest to Infra Repo
         run: |
+          # Configure Git
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # 1. Clone the INFRA repository using the PAT
+          # Replace 'siddharth-s31' with your username
+          git clone https://${{ secrets.GH_PAT }}@github.com/siddharth-s31/infra.git infra-repo
+          
+          cd infra-repo
+          
+          # 2. Generate the Manifest
+          # We read the template from the 'templates/' folder in the INFRA repo
           mkdir -p environments
-          # Read template, replace placeholders, save to environments folder
+          
           sed -e "s/{{PR_ID}}/${{ env.PR_ID }}/g" \
               -e "s/{{IMAGE_TAG}}/${{ env.SHA_SHORT }}/g" \
-              k3s/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
-
-      # 3. GitOps Push (Commit the new manifest back to repo)
-      - name: Push Manifest to Repo
-        run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
+              templates/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
           
-          # 1. Fetch the latest version of the branch from GitHub
-          git fetch origin ${{ github.head_ref }}
-          
-          # 2. Switch to that branch and RESET to match the remote exactly
-          #    (Your generated 'environments/pr-x.yaml' file is safe because it is untracked)
-          git checkout ${{ github.head_ref }}
-          git reset --hard origin/${{ github.head_ref }}
-          
-          # 3. Now add and commit the generated file
+          # 3. Commit and Push
           git add environments/pr-${{ env.PR_ID }}.yaml
-          git commit -m "Deploy PR #${{ env.PR_ID }} environment [skip ci]"
           
-          # 4. Push safely
-          git push origin ${{ github.head_ref }}
+          # Check if there are changes before committing to avoid errors
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Deploy PR #${{ env.PR_ID }} for App (SHA: ${{ env.SHA_SHORT }})"
+            git push origin main
+          fi
 
       # 4. Comment the URL on the PR
       - name: Comment PR

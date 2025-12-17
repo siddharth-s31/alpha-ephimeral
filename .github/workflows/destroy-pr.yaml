@@ -12,12 +12,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         
-      - name: Delete Manifest
+      - name: Delete Manifest from Infra Repo
         run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
-          git pull
-          rm environments/pr-${{ github.event.number }}.yaml
-          git add environments/
-          git commit -m "Cleanup PR #${{ github.event.number }}"
-          git push
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # Clone Infra Repo
+          git clone https://${{ secrets.GH_PAT }}@github.com/siddharth-s31/infra.git infra-repo
+          cd infra-repo
+          
+          # Remove the file
+          if [ -f "environments/pr-${{ github.event.number }}.yaml" ]; then
+            git pull origin main
+            rm environments/pr-${{ github.event.number }}.yaml
+            git commit -am "Cleanup: Remove PR #${{ github.event.number }} environment"
+            git push origin main
+          else
+            echo "File not found, nothing to delete."
+          fi
