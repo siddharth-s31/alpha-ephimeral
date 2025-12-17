@@ -35,30 +35,36 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }}
 
       # 2. The Twist: Generate the Manifest
-     - name: Generate and Push Manifest
+      - name: Generate and Push Manifest to Infra Repo
         run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
+          # Configure Git
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
           
-          # 1. Fetch and Switch to MAIN first
-          git fetch origin main
-          git checkout main
-          git pull origin main
+          # 1. Clone the INFRA repository using the PAT
+          # Replace 'siddharth-s31' with your username
+          git clone https://${{ secrets.GH_PAT }}@github.com/siddharth-s31/infra.git infra-repo
           
-          # 2. NOW generate the manifest (while we are on the main branch)
-          # We must recreate the environments folder just in case
+          cd infra-repo
+          
+          # 2. Generate the Manifest
+          # We read the template from the 'templates/' folder in the INFRA repo
           mkdir -p environments
           
           sed -e "s/{{PR_ID}}/${{ env.PR_ID }}/g" \
               -e "s/{{IMAGE_TAG}}/${{ env.SHA_SHORT }}/g" \
-              k8s/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
+              templates/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
           
-          # 3. Add and Commit
+          # 3. Commit and Push
           git add environments/pr-${{ env.PR_ID }}.yaml
-          git commit -m "Deploy PR #${{ env.PR_ID }} environment [skip ci]"
           
-          # 4. Push to MAIN
-          git push origin main
+          # Check if there are changes before committing to avoid errors
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Deploy PR #${{ env.PR_ID }} for App (SHA: ${{ env.SHA_SHORT }})"
+            git push origin main
+          fi
 
       # 4. Comment the URL on the PR
       - name: Comment PR
