@@ -30,13 +30,14 @@ jobs:
       - name: Setup Pack
         uses: buildpacks/github-actions/setup-pack@v5.9.2
 
-      # 2. Run the build command
+     # 2. Run the build command (Pointing to the 'app' folder)
       - name: Build and Push with Pack
         run: |
           pack build ${{ secrets.DOCKER_USERNAME }}/demo-app:${{ env.SHA_SHORT }} \
+            --path ./app \
             --builder paketobuildpacks/builder-jammy-base \
             --publish
-
+            
       # 2. The Twist: Generate the Manifest
       - name: Generate and Push Manifest to Infra Repo
         run: |
