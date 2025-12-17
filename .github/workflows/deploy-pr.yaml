@@ -57,7 +57,7 @@ jobs:
           
           sed -e "s/{{PR_ID}}/${{ env.PR_ID }}/g" \
               -e "s/{{IMAGE_TAG}}/${{ env.SHA_SHORT }}/g" \
-              templates/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
+              k3s/template.yaml > environments/pr-${{ env.PR_ID }}.yaml
           
           # 3. Commit and Push
           git add environments/pr-${{ env.PR_ID }}.yaml
